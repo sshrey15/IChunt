@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  background-color: #f0f0f0;
+}
+
+.container {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+h2 {
+  color: #333;
+  text-align: center;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+  margin-bottom: 20px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 5px;
+}
+
+@media screen and (max-width: 600px) {
+  .container {
+    width: 100%;
+    padding: 10px;
+  }
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h2>Original Image</h2>
+  <img src="data:image/jpeg;base64,{{ img1 }}" />
+
+  <h2>Testing Image</h2>
+  <img src="data:image/jpeg;base64,{{ bw }}" />
+
+  <h2>Bitwise Image</h2>
+  <img src="data:image/jpeg;base64,{{ bitwise }}" />
+
+  <h2>Output Image</h2>
+  <img src="data:image/jpeg;base64,{{ output }}" />
+</div>
+
+</body>
+</html>
