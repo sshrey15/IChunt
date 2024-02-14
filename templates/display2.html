@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Processed Video</title>
+</head>
+<script>
+    var sliders = document.getElementsByClassName('slider');
+for (var i = 0; i < sliders.length; i++) {
+    sliders[i].oninput = function() {
+        var lower = [document.getElementById('hueMin').value, document.getElementById('satMin').value, document.getElementById('valMin').value];
+        var upper = [document.getElementById('hueMax').value, document.getElementById('satMax').value, document.getElementById('valMax').value];
+        fetch('/set_hsv', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({lower: lower, upper: upper}),
+        });
+    }
+}
+</script>
+<body>
+    <h1>Processed Video</h1>
+    <video width="320" height="240" controls>
+        <source src="{{ url_for('static', filename='output.mp4') }}" type="video/mp4">
+        Your browser does not support the video tag.
+    </video>
+    <input type="range" min="0" max="179" value="0" class="slider" id="hueMin">
+<input type="range" min="0" max="255" value="0" class="slider" id="satMin">
+<input type="range" min="0" max="255" value="0" class="slider" id="valMin">
+<!-- More sliders for the max values -->
+</body>
+</html>

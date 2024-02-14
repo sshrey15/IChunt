@@ -13,6 +13,7 @@ body {
   max-width: 600px;
   margin: 0 auto;
   padding: 20px;
+  grid-template-columns:minmax(10px);
 }
 
 h2 {
@@ -40,19 +41,31 @@ img {
 </style>
 </head>
 <body>
+  
 
 <div class="container">
+  <div class="row">
+
+  </div>
   <h2>Original Image</h2>
   <img src="data:image/jpeg;base64,{{ img1 }}" />
 
   <h2>Testing Image</h2>
   <img src="data:image/jpeg;base64,{{ bw }}" />
 
+  <h2>Testing Image</h2>
+  <img src="data:image/jpeg;base64,{{ edges1 }}" />
+  <img src="data:image/jpeg;base64,{{ edges2 }}" />
+
+
   <h2>Bitwise Image</h2>
   <img src="data:image/jpeg;base64,{{ bitwise }}" />
 
   <h2>Output Image</h2>
   <img src="data:image/jpeg;base64,{{ output }}" />
+
+  <h2>Error Percentage</h2>
+  <p>{{ error_percentage }}%</p>
 </div>
 
 </body>
