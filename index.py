@@ -1,69 +1,57 @@
-from flask import Flask, request, render_template, send_file, send_from_directory
+from flask import Flask, request, render_template,redirect, send_file, send_from_directory,url_for
 from PIL import Image
+from google.cloud import vision
+from google.cloud.vision import ImageAnnotatorClient
+
 import pytesseract
 from werkzeug.utils import secure_filename
 import cv2
 import numpy as np
 import base64
 import io
+import time
+import serial
 import os
 
+ser = serial.Serial(port='COM8', baudrate=9600, timeout=0.05, bytesize=8, stopbits=serial.STOPBITS_ONE,parity=serial.PARITY_NONE, xonxoff=False, rtscts=False, dsrdtr=False)
+ser.close()
+
 app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
 
-def process_video(filepath):
-    # Define the HSV lower and upper bounds for the color of the leads
-    lower_hsv = np.array([0, 0, 0])
-    upper_hsv = np.array([179, 255, 255])
 
-    # Capture the video from the uploaded file
-    cap = cv2.VideoCapture(filepath)
+def test_and_ic():
+    ser = serial.Serial(port='COM8', baudrate=9600, timeout=1, bytesize=8, stopbits=serial.STOPBITS_ONE,parity=serial.PARITY_NONE, xonxoff=False, rtscts=False, dsrdtr=False)
+    
+    try:
+        time.sleep(2)  # wait for the Arduino to reset
+        ser.write(b'AND')  # send 'AND' to the Arduino
+        result = ser.readline().decode('utf-8')  # read the response from the Arduino
+        return result
+    finally:
+        ser.close()
 
-    # Define the codec and create a VideoWriter object
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    out = cv2.VideoWriter('output.mp4', fourcc, 20.0, (640, 480))
+def test_nor_ic():
+    ser = serial.Serial(port='COM8', baudrate=9600, timeout=1, bytesize=8, stopbits=serial.STOPBITS_ONE,parity=serial.PARITY_NONE, xonxoff=False, rtscts=False, dsrdtr=False)
+    
+    try:
+        time.sleep(2)  # wait for the Arduino to reset
+        ser.write(b'NOR')  # send 'NOR' to the Arduino
+        result = ser.readline().decode('utf-8')  # read the response from the Arduino
+        return result
+    finally:
+        ser.close()
 
-    # Loop until the video ends
-    while(cap.isOpened()):
-        ret, frame = cap.read()
-        if ret == True:
-            # Convert the frame to HSV color space
-            hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+def end_connection():
+    ser = serial.Serial(port='COM8', baudrate=9600, timeout=1, bytesize=8, stopbits=serial.STOPBITS_ONE,parity=serial.PARITY_NONE, xonxoff=False, rtscts=False, dsrdtr=False)
+    
+    try:
+        time.sleep(2)  # wait for the Arduino to reset
+        ser.write(b'OFF')  # send 'END' to the Arduino
+        result = ser.readline().decode('utf-8')  # read the response from the Arduino
+        return result
+    finally:
+        ser.close()
 
-            # Create a mask based on the HSV range
-            mask = cv2.inRange(hsv, lower_hsv, upper_hsv)
-
-            # Find the contours of the masked image
-            contours, hierarchy = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-            # Loop over the contours
-            w = h = 0
-            for cnt in contours:
-                # Calculate the area of the contour
-                area = cv2.contourArea(cnt)
-
-                # Filter out small or large areas
-                if area < 50 or area > 2000:
-                    continue
-
-                # Draw a bounding rectangle around the contour
-                x, y, w, h = cv2.boundingRect(cnt)
-                cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
-            
-            lead_width = w
-            lead_length = h
-            # Write the frame into the file 'output.mp4'
-            frame = cv2.resize(frame, (640, 480))
-            out.write(frame)
-
-        else:
-            break
-
-    # Release everything when job is finished
-    cap.release()
-    out.release()
-
-    return 'output.mp4'
 
 
 @app.route('/', methods=['GET', 'POST'])
@@ -119,6 +107,8 @@ def upload():
         black_pixels = total_pixels - white_pixels
         error_percentage = round((black_pixels / total_pixels) * 100, 2)
 
+       
+
         # Save the bitwise image
    
 
@@ -129,6 +119,8 @@ def upload():
         params.filterByCircularity = False
         detector = cv2.SimpleBlobDetector_create(params)
         keypoints = detector.detect(im)
+
+        # defectdetection@defectdetection-414419.iam.gserviceaccount.com // SERVICE ACCOUNT
 
    
        
@@ -154,30 +146,26 @@ def upload():
         bw_base64 = base64.b64encode(bw_encoded).decode('utf-8')
 
         return render_template('display.html', img1=img1_base64, bitwise=bitwise_base64, output=output_base64, bw=bw_base64, error_percentage=error_percentage, edges1=edges1_base64, edges2=edges2_base64)
-    return render_template('upload.html')
+    return render_template('upload.html', ictest_url=url_for('home'))
+@app.route('/ictest')
+def home():
+    return render_template('home.html')
+
+@app.route('/test_ic', methods=['POST'])
+def test_ic():
+    ic_type = request.form.get('ic_type')
+    if ic_type == 'AND':
+        result = test_and_ic()
+    elif ic_type == 'NOR':
+        result = test_nor_ic()
+    elif ic_type == 'OFF':
+        result = end_connection()
+    else:
+        result = 'Invalid IC type'
+    return render_template('result.html', result=result)
 
 
 
-
-
-
-@app.route('/process', methods=['GET'])
-def process():
-    if request.method == 'POST':
-        if 'file' not in request.files:
-            return 'No file part', 400
-
-        file = request.files['file']
-        if file.filename == '':
-            return 'No selected file', 400
-
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
-        file.save(filepath)
-
-        output_filepath = process_video(filepath)
-
-        return send_from_directory(app.config['UPLOAD_FOLDER'], output_filepath, as_attachment=True, mimetype='video/mp4')
-    return render_template('process.html')
 
 
 if __name__ == '__main__':
